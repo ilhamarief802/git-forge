@@ -355,11 +355,15 @@ function issueConnection(repo: Repo, query: string, _ctx: Ctx,
   const order = /orderBy\s*:\s*\{[^}]*direction\s*:\s*(ASC|DESC)/i.exec(query);
   const direction = order ? order[1].toUpperCase() : 'ASC';
   rows.sort((a, b) => (direction === 'DESC' ? b.number - a.number : a.number - b.number));
-  const first = /first\s*:\s*(\$?[A-Za-z0-9_]+|\d+)/.exec(query);
+  // `first: $first` must resolve through the variables; reading the literal
+  // "$first" as a number gave NaN, which slice() turns into an empty page (the
+  // fixture then failed with "the OPEN issue list is empty", measured).
+  const first = /first\s*:\s*(\$[A-Za-z0-9_]+|\d+)/.exec(query);
   let limit = rows.length;
   if (first) {
     const raw = first[1];
-    limit = raw.startsWith('$') ? Number(vars[raw.slice(1)] ?? rows.length) : Number(raw);
+    const value = raw.startsWith('$') ? Number(vars[raw.slice(1)]) : Number(raw);
+    if (Number.isFinite(value) && value >= 0) limit = value;
   }
   const after = /after\s*:\s*\$?([A-Za-z0-9_]+)/.exec(query);
   let start = 0;

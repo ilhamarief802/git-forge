@@ -35,7 +35,7 @@ body = (pkt("command=ls-refs\n") + pkt("agent=git/2.55.0\n") + pkt("object-forma
         + pkt("peel\n") + pkt("symrefs\n") + pkt("ref-prefix HEAD\n")
         + pkt("ref-prefix refs/heads/main\n") + b"0000")
 req = urllib.request.Request(
-    "http://127.0.0.1:%d/adaiversen/t1.git/git-upload-pack" % port, data=body,
+    "http://127.0.0.1:%s/adaiversen/t1.git/git-upload-pack" % port, data=body,
     headers={"Git-Protocol": "version=2",
              "Content-Type": "application/x-git-upload-pack-request"})
 raw = urllib.request.urlopen(req, timeout=10).read()
