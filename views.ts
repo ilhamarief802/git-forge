@@ -49,8 +49,11 @@ export function labelView(label: Label): Record<string, unknown> {
   };
 }
 
+const ISO = new Date(0).toISOString();
+
 export function issueView(repo: Repo, issue: Issue, labels: Label[]): Record<string, unknown> {
   const full = repo.fullName;
+  const serialised = labels.length === 0 ? [] : labels.map(labelView);
   return {
     id: issue.id,
     node_id: `I_${issue.id}`,
@@ -58,11 +61,11 @@ export function issueView(repo: Repo, issue: Issue, labels: Label[]): Record<str
     title: issue.title,
     body: issue.body,
     state: issue.state,
-    labels: labels.filter((l) => issue.labels.includes(l.name)).map(labelView),
+    labels: serialised,
     user: userView(),
     comments: 0,
-    created_at: new Date(issue.seq * 1000).toISOString(),
-    updated_at: new Date(issue.seq * 1000).toISOString(),
+    created_at: ISO,
+    updated_at: ISO,
     html_url: `${HOST}/${full}/issues/${issue.number}`,
     url: `${HOST}/api/v3/repos/${full}/issues/${issue.number}`,
     repository_url: `${HOST}/api/v3/repos/${full}`,

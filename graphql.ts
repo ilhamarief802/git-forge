@@ -171,7 +171,9 @@ function unknownRootField(query: string): string | null {
                          'createPullRequest', 'createIssue', 'closeIssue', 'addComment',
                          'mergePullRequest', 'rateLimit', 'user']);
   const body = query.replace(/\b(query|mutation)\b[^{]*\{/, '{');
-  for (const m of body.matchAll(/[,{\s]([A-Za-z_][A-Za-z0-9_]*)\s*[({:]/g)) {
+  // `{ bogusField }` selects a bare field with no argument, so the character
+  // after the name is a brace or whitespace — the pattern must not require ( :.
+  for (const m of body.matchAll(/[,{\s]([A-Za-z_][A-Za-z0-9_]*)\s*(?=[({:}\s])/g)) {
     const name = m[1];
     if (known.has(name)) continue;
     // Selections inside a returned object are not root fields; only the first

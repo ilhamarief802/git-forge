@@ -9,7 +9,7 @@ import {
   userView,
 } from './views.ts';
 import { parseCommit } from './store.ts';
-import type { Repo, Store } from './store.ts';
+import type { Issue, Label, Repo, Store } from './store.ts';
 
 const JSON_TYPE = 'application/json; charset=utf-8';
 const PER_PAGE = 30;
@@ -23,13 +23,16 @@ export interface Ctx {
 function send(res: ServerResponse, status: number, body: unknown,
               headers: Record<string, string> = {}): void {
   const text = `${JSON.stringify(body)}\n`;
+  // byteLength and end() each walk the string; one Buffer keeps the hot read
+  // path (2,000 sequential GETs) to a single conversion.
+  const payload = Buffer.from(text, 'utf8');
   res.writeHead(status, {
     'content-type': JSON_TYPE,
-    'content-length': Buffer.byteLength(text),
+    'content-length': payload.length,
     'x-github-request-id': randomUUID(),
     ...headers,
   });
-  res.end(text);
+  res.end(payload);
 }
 
 const notFound = (res: ServerResponse) => send(res, 404, { message: 'Not Found' });
@@ -230,7 +233,7 @@ export async function handleRest(req: IncomingMessage, res: ServerResponse,
       }
       return notFound(res);
     }
-    if (method === 'GET') return send(res, 200, issueView(repo, issue, store.listLabels(repo)));
+    if (method === 'GET') return send(res, 200, issueView(repo, issue, labelsForIssue(store, repo, issue)));
     if (method === 'PATCH') {
       try {
         const payload = await json(req);
@@ -241,7 +244,7 @@ export async function handleRest(req: IncomingMessage, res: ServerResponse,
       } catch {
         return badJson(res);
       }
-      return send(res, 200, issueView(repo, issue, store.listLabels(repo)));
+      return send(res, 200, issueView(repo, issue, labelsForIssue(store, repo, issue)));
     }
   }
 
@@ -519,6 +522,13 @@ function isAncestorOf(store: Store, ancestor: string, tip: string): boolean {
     }
   }
   return false;
+}
+
+/** The label objects one issue carries; no issue labels means no list at all. */
+function labelsForIssue(store: Store, repo: Repo, issue: Issue): Label[] {
+  if (issue.labels.length === 0) return [];
+  const all = store.listLabels(repo);
+  return all.filter((label) => issue.labels.includes(label.name));
 }
 
 function decodeContent(payload: Record<string, unknown>): Buffer {
